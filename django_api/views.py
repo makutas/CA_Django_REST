@@ -1,8 +1,9 @@
 from django.shortcuts import render
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, mixins, status
 from rest_framework.exceptions import ValidationError
 from .models import Post, Comment, PostLike, CommentLike
-from .serializers import PostSerializer, CommentSerializer
+from .serializers import PostSerializer, CommentSerializer, PostLikeSerializer
+from rest_framework.response import Response
 
 
 # class PostList(generics.ListAPIView):
@@ -37,6 +38,33 @@ class PostDetail(generics.RetrieveUpdateDestroyAPIView):
             return self.destroy(request, *args, **kwargs)
         else:
             raise ValidationError('You can\'t delete another user posts!')
+
+
+class PostLikeCreate(generics.ListCreateAPIView, mixins.DestroyModelMixin):
+    serializer_class = PostLikeSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        """Method to return specific PostLike objects.
+
+        These are based on the logged in user and specific post in question"""
+        user = self.request.user
+        post = Post.objects.get(pk=self.kwargs['pk'])
+        return PostLike.objects.filter(post=post, user=user)
+
+    def perform_create(self, serializer):
+        if self.get_queryset().exists():
+            raise ValidationError('You cannot put more that one like on a post!')
+        post = Post.objects.get(pk=self.kwargs['pk'])
+        serializer.save(user=self.request.user, post=post)
+
+    def delete(self, request, *args, **kwargs):
+        # Can only delete an object which exists
+        if self.get_queryset().exists():
+            self.get_queryset().delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise ValidationError('You have not created a like yet!')
 
 
 class CommentList(generics.ListCreateAPIView):
