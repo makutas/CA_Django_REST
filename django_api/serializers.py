@@ -25,7 +25,7 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = [
             'post_id', 'title', 'body', 'user', 'user_id',
-            'user_email', 'created_on', 'comments', 'comment_count', 'likes'
+            'user_email', 'created_on', 'comments', 'comment_count', 'likes', 'image'
         ]
 
     def get_comment_count(self, post):
